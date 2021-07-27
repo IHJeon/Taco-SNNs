@@ -219,8 +219,7 @@ spike_pttn_per_bin=np.array(Spike_trains).reshape(NUM_MFs, time_step)
 #sys.exit()
 
 SPK_GC=Spiking_cells(num_dend=NUM_MFs) 
-
-
+''' For recording the values of variables as np.zeros'''
 AMPA_Conductance=np.zeros((NUM_MFs, time_step))
 NMDA_Conductance=np.zeros((NUM_MFs, time_step))
 GABA_Conductance=np.zeros((NUM_MFs, time_step))
@@ -237,6 +236,7 @@ p_ofAMPA_d=np.zeros((NUM_MFs,time_step))
 p_ofAMPA_s=np.zeros((NUM_MFs,time_step))
 p_ofNMDA  =np.zeros((NUM_MFs,time_step))
 p_ofGABA  =np.zeros((NUM_MFs,time_step))
+''' Simulation loop start '''
 for t, time in enumerate(TIME_RANGE):
     mem_voltage[t]=SPK_GC.membrane_potential
 
@@ -252,7 +252,7 @@ for t, time in enumerate(TIME_RANGE):
         REFRACTORY_COUNT-=1
     else:        
         for dend in range(SPK_GC.num_dend):
-            if spike_pttn_per_bin[dend][t]==1:
+            if spike_pttn_per_bin[dend][t]==1: #if there's a spike input for a dendrite
                 AMPA_waveform_of_a_spike, _ =SPK_GC.AMPA_conductance_evaluation(np.arange(time_step-t), dend)
                 NMDA_waveform_of_a_spike, _ =SPK_GC.NMDA_conductance_evaluation(np.arange(time_step-t), dend)
                 GABA_waveform_of_a_spike, _ =SPK_GC.GABA_conductance_evaluation(np.arange(time_step-t), dend)
@@ -267,16 +267,16 @@ for t, time in enumerate(TIME_RANGE):
         if SPK_GC.membrane_potential>=activation_threshold:
             print('SPIKE at time', t)
             REFRACTORY_COUNT=refractory_interval
-            SPK_GC.membrane_potential=0          # Represent spike (choosed as a arbitrary high value)   
+            SPK_GC.membrane_potential=0          # 0mv Represent spikes (choosed as a arbitrary high value)   
         elif SPK_GC.membrane_potential<=leak_reversal_potential:
             print('Limiting minimum potential by leak revers. Pot. at time', t)
             SPK_GC.membrane_potential=leak_reversal_potential
 
     for dend in range(SPK_GC.num_dend):
-        SPK_GC.PLASTICITY(dend, spike_pttn_per_bin[dend][t])
+        SPK_GC.PLASTICITY(dend, spike_pttn_per_bin[dend][t]) #Short term plasticity
     
     
-    #For STP & No STP Comparison-------------------------------
+    # No STP simulation for Comparison-------------------------------
     '''
     mem_voltage2[t]=SPK_GC.MEM_POT_NOSTP
 
