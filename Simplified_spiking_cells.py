@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-
+from matplotlib import pyplot as plt
 
 UNIT_SCALE=1e-03 ##Unit scales = milli
 TIME_UNIT=UNIT_SCALE
@@ -13,7 +13,7 @@ INH_dlt=np.array([1.*1e-03, 1.*1e-03])                *PARAM_SCALING
 INH_rho=0.3*1e-03                                        *PARAM_SCALING
 
 
-EXT_amp=np.array([1.*1e-09, 0.3*1e-09])                *PARAM_SCALING*10  #Amp & conductances upscaled by milli
+EXT_amp=np.array([1.*1e-09, 0.3*1e-09])                *PARAM_SCALING*30  #Amp & conductances upscaled by milli
 INH_amp=np.array([1.*1e-09, 0.3*1e-09])                *PARAM_SCALING*10
 
 
@@ -114,9 +114,8 @@ class Spiking_cells:
 
 
 
-
+'''
 from RateCodingModel import *
-from matplotlib import pyplot as plt
 time_step=1000
 TIME_RANGE=np.linspace(0,TIME_UNIT*time_step, time_step)
 
@@ -127,135 +126,136 @@ Spike_trains+=poisson_spike_generator(50, time_step, 1e-03)
 #Spike_trains+=poisson_spike_generator(50, time_step, 1e-03)
 #Spike_trains+=poisson_spike_generator(50, time_step, 1e-03)
 
-spike_pttn_per_bin=np.array(Spike_trains).reshape(NUM_MFs, time_step)
+spike_pttn_per_bin=np.array(Spike_trains).reshape(NUM_MFs, time_step)'''
 
-#print(np.shape(spike_pttn_per_bin))
-#print(np.shape(spike_pttn_per_bin[0]))
-#sys.EXTit()
 
-'''Input spike plot'''
-#raster_plot(spike_pttn_per_bin, [0])
-#sys.EXTit()
+def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC=None):
+    TIME_RANGE=np.linspace(0,TIME_UNIT*time_step, time_step)
+    '''Input spike plot'''
+    #raster_plot(spike_pttn_per_bin, [0])
+    #sys.EXTit()
 
-SPK_GC=Spiking_cells(num_dend=NUM_MFs) 
-''' For recording the values of variables as np.zeros'''
-EXT_Conductance=np.zeros((NUM_MFs, time_step))
-INH_Conductance=np.zeros((NUM_MFs, time_step))
+    if SPK_GC==None: SPK_GC=Spiking_cells(num_dend=NUM_MFs)
+    else: SPK_GC=SPK_GC
+    ''' For recording the values of variables as np.zeros'''
+    EXT_Conductance=np.zeros((NUM_MFs, time_step))
+    INH_Conductance=np.zeros((NUM_MFs, time_step))
+    mem_voltage=np.zeros(time_step)
+    REFRACTORY_COUNT=0
+    p_ofEXT=np.zeros((NUM_MFs,time_step))
+    p_ofINH=np.zeros((NUM_MFs,time_step))
 
-EXT_NO_STP=np.zeros((NUM_MFs, time_step))
-mem_voltage=np.zeros(time_step)
-REFRACTORY_COUNT=0
+    EXT_NO_STP=np.zeros((NUM_MFs, time_step))
+    mem_voltage2=np.zeros(time_step)
+    REFRACTORY_COUNT2=0
 
-mem_voltage2=np.zeros(time_step)
-REFRACTORY_COUNT2=0
+    Num_OUTPUT_SPIKE=0
+    ''' Simulation loop start '''
+    for t, time in enumerate(TIME_RANGE):
+        mem_voltage[t]=SPK_GC.membrane_potential
 
-p_ofEXT=np.zeros((NUM_MFs,time_step))
-p_ofINH  =np.zeros((NUM_MFs,time_step))
-''' Simulation loop start '''
-for t, time in enumerate(TIME_RANGE):
-    mem_voltage[t]=SPK_GC.membrane_potential
-
-    for dend in range(SPK_GC.num_dend):
-        p_ofEXT[dend][t]=SPK_GC.p_EXT(dend)
-        p_ofINH[dend][t]=  SPK_GC.p_INH(dend)
-    
-
-    if not REFRACTORY_COUNT==0:  #Refractory Period        
-        SPK_GC.membrane_potential=reset_membrane_potential
-        REFRACTORY_COUNT-=1
-    else:        
         for dend in range(SPK_GC.num_dend):
-            if spike_pttn_per_bin[dend][t]==1: #if there's a spike input for a dendrite
-                EXT_waveform_of_a_spike, _ =SPK_GC.EXT_conductance_evaluation(np.arange(time_step-t), dend)
-                INH_waveform_of_a_spike, _ =SPK_GC.INH_conductance_evaluation(np.arange(time_step-t), dend)
-                EXT_Conductance[dend][t:]+=EXT_waveform_of_a_spike
-                INH_Conductance[dend][t:]+=INH_waveform_of_a_spike
+            p_ofEXT[dend][t]=SPK_GC.p_EXT(dend)
+            p_ofINH[dend][t]=  SPK_GC.p_INH(dend)
 
-            SPK_GC.rate_of_change_membrane_voltage(SPK_GC.membrane_potential,
-                                                 EXT_Conductance[dend][t], INH_Conductance[dend][t], STP=True)            
 
-        if SPK_GC.membrane_potential>=activation_threshold:
-            print('SPIKE at time', t)
-            REFRACTORY_COUNT=refractory_interval
-            SPK_GC.membrane_potential=0          # 0mv Represent spikes (choosed as a arbitrary high value)   
-        elif SPK_GC.membrane_potential<=leak_reversal_potential:
-            print('Limiting minimum potential by leak revers. Pot. at time', t)
-            SPK_GC.membrane_potential=leak_reversal_potential
+        if not REFRACTORY_COUNT==0:  #Refractory Period        
+            SPK_GC.membrane_potential=reset_membrane_potential
+            REFRACTORY_COUNT-=1
+        else:        
+            for dend in range(SPK_GC.num_dend):
+                if spike_pttn_per_bin[dend][t]==1: #if there's a spike input for a dendrite
+                    EXT_waveform_of_a_spike, _ =SPK_GC.EXT_conductance_evaluation(np.arange(time_step-t), dend)
+                    INH_waveform_of_a_spike, _ =SPK_GC.INH_conductance_evaluation(np.arange(time_step-t), dend)
+                    EXT_Conductance[dend][t:]+=EXT_waveform_of_a_spike
+                    INH_Conductance[dend][t:]+=INH_waveform_of_a_spike
 
-    for dend in range(SPK_GC.num_dend):
-        SPK_GC.PLASTICITY(dend, spike_pttn_per_bin[dend][t]) #Short term plasticity
-    
-    
-    # No STP simulation for Comparison-------------------------------
-    '''
-    mem_voltage2[t]=SPK_GC.MEM_POT_NOSTP
+                SPK_GC.rate_of_change_membrane_voltage(SPK_GC.membrane_potential,
+                                                     EXT_Conductance[dend][t], INH_Conductance[dend][t], STP=True)            
 
-    if not REFRACTORY_COUNT2==0:  #Refractory Period        
-        SPK_GC.MEM_POT_NOSTP=reset_membrane_potential
-        REFRACTORY_COUNT2-=1    
-    else:        
+            if SPK_GC.membrane_potential>=activation_threshold:
+                #print('SPIKE at time', t)
+                Num_OUTPUT_SPIKE+=1
+                REFRACTORY_COUNT=refractory_interval
+                SPK_GC.membrane_potential=0          # 0mv Represent spikes (choosed as a arbitrary high value)   
+            elif SPK_GC.membrane_potential<=leak_reversal_potential:
+                print('Limiting minimum potential by leak revers. Pot. at time', t)
+                SPK_GC.membrane_potential=leak_reversal_potential
+
         for dend in range(SPK_GC.num_dend):
-            if spike_pttn_per_bin[dend][t]==1:
-                _, EXT_WAVE_No_STP =SPK_GC.EXT_conductance_evaluation(np.arange(time_step-t), dend)
-                _, INH_WAVE_No_STP =SPK_GC.INH_conductance_evaluation(np.arange(time_step-t), dend)
-                EXT_NO_STP[dend][t:]+=EXT_WAVE_No_STP
-                INH_NO_STP[dend][t:]+=INH_WAVE_No_STP
-            
-            SPK_GC.rate_of_change_membrane_voltage(SPK_GC.MEM_POT_NOSTP, 
-                                                EXT_NO_STP[dend][t],INH_NO_STP[dend][t], STP=False)
-
-        if SPK_GC.MEM_POT_NOSTP>=activation_threshold:
-            print('SPIKE at time', t, 'For No STP')
-            REFRACTORY_COUNT2=refractory_interval
-            SPK_GC.MEM_POT_NOSTP=0   '''
+            SPK_GC.PLASTICITY(dend, spike_pttn_per_bin[dend][t]) #Short term plasticity
 
 
-#raster_plot(spike_pttn_per_bin, [0])
+        # No STP simulation for Comparison-------------------------------
+        '''
+        mem_voltage2[t]=SPK_GC.MEM_POT_NOSTP
 
-Plotting_Scale=1e-03 # of conducntance
+        if not REFRACTORY_COUNT2==0:  #Refractory Period        
+            SPK_GC.MEM_POT_NOSTP=reset_membrane_potential
+            REFRACTORY_COUNT2-=1    
+        else:        
+            for dend in range(SPK_GC.num_dend):
+                if spike_pttn_per_bin[dend][t]==1:
+                    _, EXT_WAVE_No_STP =SPK_GC.EXT_conductance_evaluation(np.arange(time_step-t), dend)
+                    _, INH_WAVE_No_STP =SPK_GC.INH_conductance_evaluation(np.arange(time_step-t), dend)
+                    EXT_NO_STP[dend][t:]+=EXT_WAVE_No_STP
+                    INH_NO_STP[dend][t:]+=INH_WAVE_No_STP
 
-print('Total spikes arrived:', np.sum(spike_pttn_per_bin), 'shape:', np.shape(spike_pttn_per_bin) )
+                SPK_GC.rate_of_change_membrane_voltage(SPK_GC.MEM_POT_NOSTP, 
+                                                    EXT_NO_STP[dend][t],INH_NO_STP[dend][t], STP=False)
 
-fig, axs = plt.subplots(2+NUM_MFs, gridspec_kw={'height_ratios': [1]*(NUM_MFs)+[0.1]+[2]})
+            if SPK_GC.MEM_POT_NOSTP>=activation_threshold:
+                print('SPIKE at time', t, 'For No STP')
+                REFRACTORY_COUNT2=refractory_interval
+                SPK_GC.MEM_POT_NOSTP=0   '''
+    #print('Total spikes arrived:', np.sum(spike_pttn_per_bin), 'Total spike output:', Num_OUTPUT_SPIKE)
+    return SPK_GC, EXT_Conductance, INH_Conductance, mem_voltage, p_ofEXT, p_ofINH, Num_OUTPUT_SPIKE
 
+def plot_cell_dynamics(NUM_MFs, time_step, EXT_Conductance, INH_Conductance, mem_voltage):
 
+    #raster_plot(spike_pttn_per_bin, [0])
 
-for ind_mf in range(NUM_MFs):
-    axs[ind_mf].plot(np.arange(time_step), EXT_Conductance[ind_mf]*Plotting_Scale, 'red', label="EXT")
-    axs[ind_mf].plot(np.arange(time_step), INH_Conductance[ind_mf]*Plotting_Scale, 'g', label="INH")
-    axs[ind_mf].axhline(y=630*1e-12*PARAM_SCALING*Plotting_Scale, color='c', linestyle=':', label='Peak amplitude') #of both condunctances
-    #axs[ind_mf].plot(np.arange(time_step), EXT_NO_STP[ind_mf]*Plotting_Scale, label="EXT_NO")
-    #axs[ind_mf].plot(np.arange(time_step), NMDA_NO_STP[ind_mf]*Plotting_Scale, label="NMDA_NO")
-    if ind_mf==3: axs[ind_mf].legend()
+    Plotting_Scale=1e-03 # of conducntance
 
-axs[0].set_title('Conductances')
-
-#x,y = np.argwhere(spike_pttn_per_bin == 1).T
-#axs[NUM_MFs].scatter(y, x, marker='|', label='SPIKE arrivals')
-#axs[NUM_MFs].legend()
-
-axs[NUM_MFs+1].plot(np.arange(time_step), mem_voltage, label='Mem. Pot.')
-#axs[NUM_MFs].plot(np.arange(time_step), mem_voltage2, label='NO STP')
-axs[NUM_MFs+1].axhline(y=reset_membrane_potential, color='r', linestyle=':', label='Reset_pot')
-axs[NUM_MFs+1].axhline(y=activation_threshold, color='b', linestyle=':', label='Thrshld')
-axs[NUM_MFs+1].set_ylabel("""Mmbrn Ptnt'l level""")
-axs[NUM_MFs+1].legend()
-
-
-plt.show()
-
-#sys.EXTit()
-# For P development on condunctance terms of STP
-fig, axs = plt.subplots(NUM_MFs, gridspec_kw={'height_ratios': [1]*(NUM_MFs)})
-for ind_mf in range(NUM_MFs):
-    axs[ind_mf].plot(np.arange(time_step), p_ofEXT[ind_mf], color='r', label="EXT")
-    axs[ind_mf].plot(np.arange(time_step), p_ofINH[ind_mf],color='g', label="INH")
-    axs[ind_mf].axhline(y=r_EXT, color='r', linestyle=':', label='Init_EXT') 
-    axs[ind_mf].axhline(y=r_INH,color='g', linestyle=':', label='Init_INH')    
-    if ind_mf==3: axs[ind_mf].legend()
     
 
-axs[0].set_title('P development')
-plt.show()
-sys.exit()
+    fig, axs = plt.subplots(2+NUM_MFs, gridspec_kw={'height_ratios': [1]*(NUM_MFs)+[0.1]+[2]})
 
+
+
+    for ind_mf in range(NUM_MFs):
+        axs[ind_mf].plot(np.arange(time_step), EXT_Conductance[ind_mf]*Plotting_Scale, 'red', label="EXT")
+        axs[ind_mf].plot(np.arange(time_step), INH_Conductance[ind_mf]*Plotting_Scale, 'g', label="INH")
+        axs[ind_mf].axhline(y=630*1e-12*PARAM_SCALING*Plotting_Scale, color='c', linestyle=':', label='Peak amplitude') #of both condunctances
+        #axs[ind_mf].plot(np.arange(time_step), EXT_NO_STP[ind_mf]*Plotting_Scale, label="EXT_NO")
+        #axs[ind_mf].plot(np.arange(time_step), NMDA_NO_STP[ind_mf]*Plotting_Scale, label="NMDA_NO")
+        if ind_mf==3: axs[ind_mf].legend()
+
+    axs[0].set_title('Conductances')
+
+    #x,y = np.argwhere(spike_pttn_per_bin == 1).T
+    #axs[NUM_MFs].scatter(y, x, marker='|', label='SPIKE arrivals')
+    #axs[NUM_MFs].legend()
+
+    axs[NUM_MFs+1].plot(np.arange(time_step), mem_voltage, label='Mem. Pot.')
+    #axs[NUM_MFs].plot(np.arange(time_step), mem_voltage2, label='NO STP')
+    axs[NUM_MFs+1].axhline(y=reset_membrane_potential, color='r', linestyle=':', label='Reset_pot')
+    axs[NUM_MFs+1].axhline(y=activation_threshold, color='b', linestyle=':', label='Thrshld')
+    axs[NUM_MFs+1].set_ylabel("""Mmbrn Ptnt'l level""")
+    axs[NUM_MFs+1].legend()
+    plt.show()
+
+def plot_STP(NUM_MFs, time_step, p_ofEXT, p_ofINH):
+    # For P development on condunctance terms of STP
+    fig, axs = plt.subplots(NUM_MFs, gridspec_kw={'height_ratios': [1]*(NUM_MFs)})
+    for ind_mf in range(NUM_MFs):
+        axs[ind_mf].plot(np.arange(time_step), p_ofEXT[ind_mf], color='r', label="EXT")
+        axs[ind_mf].plot(np.arange(time_step), p_ofINH[ind_mf],color='g', label="INH")
+        axs[ind_mf].axhline(y=r_EXT, color='r', linestyle=':', label='Init_EXT') 
+        axs[ind_mf].axhline(y=r_INH,color='g', linestyle=':', label='Init_INH')    
+        if ind_mf==3: axs[ind_mf].legend()
+
+
+    axs[0].set_title('P development')
+    plt.show()
+    sys.exit()
