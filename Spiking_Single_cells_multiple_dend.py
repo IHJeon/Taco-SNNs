@@ -20,7 +20,7 @@ GABA_rho=0.8647*1e-03                                           *PARAM_SCALING
 AMPA_d_amp=np.array([3.724*1e-09, 0.3033*1e-09])                *PARAM_SCALING*1  #Amp & conductances upscaled by milli
 AMPA_s_amp=np.array([0.2487*1e-09,0.2799*1e-09, 0.1268*1e-09])  *PARAM_SCALING*1
 NMDA_amp=np.array([17*1e-09, 2.645*1e-09])                      *PARAM_SCALING*1
-GABA_amp=np.array([0.1*1e-09, 0.2*1e-09])                       *PARAM_SCALING*1
+GABA_amp=np.array([0.1*1e-09, 0.2*1e-09])                       *PARAM_SCALING*1e-03
 
 
 
@@ -96,16 +96,16 @@ class Spiking_cells:
             self.p_AMPA_s_R[ind_dend]=p_AMPA_s_R*(1-p_AMPA_s_U)
             self.p_NMDA_R  [ind_dend]=p_NMDA_R  *(1-p_NMDA_U  )
             self.p_GABA_U  [ind_dend]+=r_GABA   *(1-p_GABA_U  )  #GABA added
-            self.p_GABA_R  [ind_dend]= p_GABA_R  *(1-p_GABA_U  )
+            self.p_GABA_R  [ind_dend]= p_GABA_R *(1-p_GABA_U  )
         else:
-            self.p_AMPA_d_U[ind_dend]-=(p_AMPA_d_U-r_AMPA_d)/6.394 #a Potentiation Recovery time constant 
-            self.p_AMPA_s_U[ind_dend]-=(p_AMPA_s_U-r_AMPA_s)/6.394 # For NMDA, But since no info. for AMPA so.
-            self.p_NMDA_U  [ind_dend]-=(p_NMDA_U  -r_NMDA  )/6.394 # All for same
-            self.p_AMPA_d_R[ind_dend]-=(p_AMPA_d_R-1)/131  
-            self.p_AMPA_s_R[ind_dend]-=(p_AMPA_s_R-1)/14.85
-            self.p_NMDA_R  [ind_dend]-=(p_NMDA_R  -1)/236.1
-            self.p_GABA_U  [ind_dend]-=(p_GABA_U-r_GABA   )/6.394 #GABA added
-            self.p_GABA_R  [ind_dend]-=(p_GABA_R -1)/100
+            self.p_AMPA_d_U[ind_dend]-=(p_AMPA_d_U-r_AMPA_d)/6.394*1000*TIME_UNIT #a Potentiation Recovery time constant 
+            self.p_AMPA_s_U[ind_dend]-=(p_AMPA_s_U-r_AMPA_s)/6.394*1000*TIME_UNIT # For NMDA, But since no info. for AMPA so.
+            self.p_NMDA_U  [ind_dend]-=(p_NMDA_U  -r_NMDA  )/6.394*1000*TIME_UNIT # All for same
+            self.p_AMPA_d_R[ind_dend]-=(p_AMPA_d_R-1)/131         *1000*TIME_UNIT
+            self.p_AMPA_s_R[ind_dend]-=(p_AMPA_s_R-1)/14.85       *1000*TIME_UNIT
+            self.p_NMDA_R  [ind_dend]-=(p_NMDA_R  -1)/236.1       *1000*TIME_UNIT
+            self.p_GABA_U  [ind_dend]-=(p_GABA_U-r_GABA   )/6.394 *1000*TIME_UNIT#GABA added
+            self.p_GABA_R  [ind_dend]-=(p_GABA_R -1)/100          *1000*TIME_UNIT
 
 
 
@@ -205,7 +205,7 @@ spiking_rate=80
 Spike_trains=[]
 Spike_trains+=poisson_spike_generator(80, time_step, 1e-03)  # Firing rate spkies per sec,
 Spike_trains+=poisson_spike_generator(80, time_step, 1e-03)
-Spike_trains+=poisson_spike_generator(100, time_step, 1e-03)
+Spike_trains+=poisson_spike_generator(10, time_step, 1e-03)
 Spike_trains+=poisson_spike_generator(10, time_step, 1e-03)
 
 spike_pttn_per_bin=np.array(Spike_trains).reshape(NUM_MFs, time_step)
@@ -308,7 +308,7 @@ for t, time in enumerate(TIME_RANGE):
 
 #raster_plot(spike_pttn_per_bin, [0])
 
-Plotting_Scale=1 # of conducntance
+Plotting_Scale=1*UNIT_SCALE # of conducntance
 
 print('Total spikes arrived:', np.sum(spike_pttn_per_bin), 'shape:', np.shape(spike_pttn_per_bin) )
 
@@ -320,7 +320,7 @@ for ind_mf in range(NUM_MFs):
     axs[ind_mf].plot(np.arange(time_step), AMPA_Conductance[ind_mf]*Plotting_Scale, 'red', label="AMPA")
     axs[ind_mf].plot(np.arange(time_step), NMDA_Conductance[ind_mf]*Plotting_Scale, 'purple', label="NMDA")
     axs[ind_mf].plot(np.arange(time_step), GABA_Conductance[ind_mf]*Plotting_Scale, 'g', label="GABA")
-    axs[ind_mf].axhline(y=630*1e-12*PARAM_SCALING, color='c', linestyle=':', label='Peak amplitude') #of both condunctances
+    axs[ind_mf].axhline(y=630*1e-12*PARAM_SCALING*Plotting_Scale, color='c', linestyle=':', label='Peak amplitude') #of both condunctances
     #axs[ind_mf].plot(np.arange(time_step), AMPA_NO_STP[ind_mf]*Plotting_Scale, label="AMPA_NO")
     #axs[ind_mf].plot(np.arange(time_step), NMDA_NO_STP[ind_mf]*Plotting_Scale, label="NMDA_NO")
     if ind_mf==3: axs[ind_mf].legend()

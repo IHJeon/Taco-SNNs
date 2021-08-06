@@ -30,7 +30,7 @@ NUM_DATA_POINTs=1000
 #firing_rate=0.142
 stimuli_signal_rate=0.1
 mf_group='none_specified' # mf_group = 'e', or 'm' or 'l' or 'none_specified'
-NUM_MFs=20
+NUM_MFs=200
 GC_expansion_ratio=1  #M/N
 synaptic_degree=4 #K
 #NUM_MODULES=3
@@ -190,15 +190,15 @@ time_sum_of_firing_intensities=np.array(time_sum_of_firing_intensities)
 
 heatmap_plot_time_sum_of_firing_intensities=np.array(time_sum_of_firing_intensities).reshape((1, len(time_sum_of_firing_intensities)))
 print('shape time_sum_of_firing_intensities', np.shape(time_sum_of_firing_intensities))
-ax = sns.heatmap(heatmap_plot_time_sum_of_firing_intensities,  cmap="YlGnBu")
-plt.title('time_sum_of_firing_intensities, Heatmap')
+ax = sns.heatmap(heatmap_plot_time_sum_of_firing_intensities/NUM_MFs,  cmap="YlGnBu")
+plt.title('time_sum_of_firing_intensities/NUM_MFs, Heatmap')
 plt.xlabel('Time steps')
 plt.ylabel('Time Sum of intensity')
 plt.show()
 
 
-ax = plt.plot(time_sum_of_firing_intensities)
-plt.title('time_sum_of_firing_intensities, Histogram')
+ax = plt.plot(time_sum_of_firing_intensities/NUM_MFs)
+plt.title('time_sum_of_firing_intensities/NUM_MFs, Histogram')
 plt.xlabel('Time steps')
 plt.ylabel('Time Sum of intensity')
 plt.show()
