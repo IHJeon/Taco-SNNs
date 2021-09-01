@@ -7,22 +7,21 @@ TIME_UNIT=UNIT_SCALE
 PARAM_SCALING=1/UNIT_SCALE #Constants for Time, Conductances, Capacitances are up scaled for computation, Potentials remain same
 
 #lists for [a,d] :amplitudes, decay times pairs and, at the last, rho: common rise times
-EXT_dlt=np.array([1.*1e-03, 1.*1e-03])               *PARAM_SCALING  #Time terms are upscaled by milli
-EXT_rho=0.3*1e-03                                       *PARAM_SCALING
-INH_dlt=np.array([1.*1e-03, 1.*1e-03])                *PARAM_SCALING
-INH_rho=0.3*1e-03                                        *PARAM_SCALING
-
-
-EXT_amp=np.array([1.*1e-09, 0.3*1e-09])                *PARAM_SCALING*15  #Amp & conductances upscaled by milli
-INH_amp=np.array([1.*1e-09, 0.3*1e-09])                *PARAM_SCALING*1
+EXT_dlt=np.array([1.*1e-03, 1.*1e-03])          *PARAM_SCALING  #Time terms are upscaled by milli
+EXT_rho=0.3*1e-03                               *PARAM_SCALING
+#INH_dlt=np.array([1.*1e-03, 1.*1e-03])         *PARAM_SCALING
+#INH_rho=0.3*1e-03                              *PARAM_SCA
+EXT_amp=np.array([1.*1e-09, 0.3*1e-09])         *PARAM_SCALING*15  #Amp & conductances upscaled by milli
+#INH_amp=np.array([1.*1e-09, 0.3*1e-09])         *PARAM_SCALING*1
 
 
 
 membrane_capacitance=3.22*1e-12                 *PARAM_SCALING #C_m
 leak_conductance=1.06*1e-09                     *PARAM_SCALING #G_m
+INH_conductance=0.483*1e-09                     *PARAM_SCALING #G_GABA
 
 leak_reversal_potential=-79.9*1e-03             #*PARAM_SCALING #E_m
-INH_reversal_potential=0                        #*PARAM_SCALING #E_INH (tonic)
+INH_reversal_potential =-79.1*1e-03              #*PARAM_SCALING #E_INH (tonic)
 EXT_reversal_potential=0                        #*PARAM_SCALING #E_EXT
 reset_membrane_potential=-63*1e-03              #*PARAM_SCALING #V_r
 activation_threshold=-40*1e-03                  #*PARAM_SCALING #V_t
@@ -45,8 +44,8 @@ class Spiking_cells:
         for dend in range(num_dend):
             self.p_EXT_U.append(r_EXT)
             self.p_EXT_R.append(1)
-            self.p_INH_U.append(r_INH) 
-            self.p_INH_R.append(1)
+            #self.p_INH_U.append(r_INH)
+            #self.p_INH_R.append(1)
             #self.p_EXT_R.append(r_EXT)
             #self.p_EXT_U.append(1)
             #self.p_INH_R.append(r_INH) 
@@ -58,27 +57,27 @@ class Spiking_cells:
 
 
     def p_EXT(self, ind_dend): return self.p_EXT_U[ind_dend]*self.p_EXT_R[ind_dend]
-    def p_INH(self, ind_dend): return self.p_INH_U[ind_dend]*self.p_INH_R[ind_dend]
+    #def p_INH(self, ind_dend): return self.p_INH_U[ind_dend]*self.p_INH_R[ind_dend]
     
 
     def PLASTICITY(self, ind_dend, SPIKE):
         p_EXT_U=self.p_EXT_U[ind_dend]
         p_EXT_R=self.p_EXT_R[ind_dend]
-        p_INH_U=self.p_INH_U[ind_dend] 
-        p_INH_R=self.p_INH_R[ind_dend]
+        #p_INH_U=self.p_INH_U[ind_dend] 
+        #p_INH_R=self.p_INH_R[ind_dend]
         if SPIKE:       
             self.p_EXT_U[ind_dend]+=r_EXT*(1-p_EXT_U)
             self.p_EXT_R[ind_dend]=p_EXT_R*(1-p_EXT_U)
-            self.p_INH_U[ind_dend]+=r_INH*(1-p_INH_U)
-            self.p_INH_R[ind_dend]= p_INH_R*(1-p_INH_U)
+            #self.p_INH_U[ind_dend]+=r_INH*(1-p_INH_U)
+            #self.p_INH_R[ind_dend]= p_INH_R*(1-p_INH_U)
             #print('Spike Plasticity')
             #print('U change:', self.p_EXT_U[ind_dend]-p_EXT_U)
             #print('R change:', self.p_EXT_R[ind_dend]-p_EXT_R)
         else:
             self.p_EXT_U[ind_dend]-=(p_EXT_U-r_EXT)/50. #Potentiation Recovery time constants
-            self.p_INH_U[ind_dend]-=(p_INH_U-r_INH)/100. 
+            #self.p_INH_U[ind_dend]-=(p_INH_U-r_INH)/100. 
             self.p_EXT_R[ind_dend]-=(p_EXT_R-1)/100.     #Depression Recovery time constants
-            self.p_INH_R[ind_dend]-=(p_INH_R-1)/100.     #10,20,100,50
+            #self.p_INH_R[ind_dend]-=(p_INH_R-1)/100.     #10,20,100,50
             #print('Non Spike Plasticity')
             #print('U change:', self.p_EXT_U[ind_dend]-p_EXT_U)
             #print('R change:', self.p_EXT_R[ind_dend]-p_EXT_R)
@@ -93,19 +92,21 @@ class Spiking_cells:
             wave+=EXT_amp[ind]*(np.exp(-t/EXT_dlt[ind])-np.exp(-t/EXT_rho))            
         return self.p_EXT(indEXT_dend)*wave, r_EXT*wave
 
-    def INH_conductance_evaluation(self, t, indINH_dend):
-        INH_wave=np.zeros(len(t))
-        for ind, _ in enumerate(INH_amp):                        
-            INH_wave+=INH_amp[ind]*(np.exp(-t/INH_dlt[ind])-np.exp(-t/INH_rho))
-        return self.p_INH(indINH_dend)*INH_wave, r_INH*INH_wave
+    #def INH_conductance_evaluation(self, t, indINH_dend):
+    #    INH_wave=np.zeros(len(t))
+    #    for ind, _ in enumerate(INH_amp):                        
+    #        INH_wave+=INH_amp[ind]*(np.exp(-t/INH_dlt[ind])-np.exp(-t/INH_rho))
+    #    return self.p_INH(indINH_dend)*INH_wave, r_INH*INH_wave
 
 
     def rate_of_change_membrane_voltage(self, Current_Mem_Pot, current_conductance_EXT, \
                                                                current_conductance_INH, STP=True):
+                                                               #STP=True):
 
         dV=-1/membrane_capacitance*(\
                 leak_conductance*(Current_Mem_Pot-leak_reversal_potential)\
-                +current_conductance_INH*(Current_Mem_Pot-INH_reversal_potential)\
+                #+current_conductance_INH*(Current_Mem_Pot-INH_reversal_potential)\
+                +INH_conductance*(Current_Mem_Pot-INH_reversal_potential)\
                 +current_conductance_EXT *(Current_Mem_Pot-EXT_reversal_potential)\
                 )
         
@@ -143,7 +144,7 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC=None):
     mem_voltage=np.zeros(time_step)
     REFRACTORY_COUNT=0
     p_ofEXT=np.zeros((NUM_MFs,time_step))
-    p_ofINH=np.zeros((NUM_MFs,time_step))
+    #p_ofINH=np.zeros((NUM_MFs,time_step))
 
     EXT_NO_STP=np.zeros((NUM_MFs, time_step))
     mem_voltage2=np.zeros(time_step)
@@ -157,7 +158,7 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC=None):
 
         for dend in range(SPK_GC.num_dend):
             p_ofEXT[dend][t]=SPK_GC.p_EXT(dend)
-            p_ofINH[dend][t]=  SPK_GC.p_INH(dend)
+            #p_ofINH[dend][t]=  SPK_GC.p_INH(dend)
 
 
         if not REFRACTORY_COUNT==0:  #Refractory Period        
@@ -167,12 +168,13 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC=None):
             for dend in range(SPK_GC.num_dend):
                 if spike_pttn_per_bin[dend][t]==1: #if there's a spike input for a dendrite
                     EXT_waveform_of_a_spike, _ =SPK_GC.EXT_conductance_evaluation(np.arange(time_step-t), dend)
-                    INH_waveform_of_a_spike, _ =SPK_GC.INH_conductance_evaluation(np.arange(time_step-t), dend)
+                    #INH_waveform_of_a_spike, _ =SPK_GC.INH_conductance_evaluation(np.arange(time_step-t), dend)
                     EXT_Conductance[dend][t:]+=EXT_waveform_of_a_spike
-                    INH_Conductance[dend][t:]+=INH_waveform_of_a_spike
+                    INH_Conductance[dend][t]+=INH_conductance*(SPK_GC.membrane_potential-INH_reversal_potential)
 
                 SPK_GC.rate_of_change_membrane_voltage(SPK_GC.membrane_potential,
                                                      EXT_Conductance[dend][t], INH_Conductance[dend][t], STP=True)            
+                                                     #EXT_Conductance[dend][t], STP=True)
 
             if SPK_GC.membrane_potential>=activation_threshold:
                 #print('SPIKE at time', t)
@@ -211,9 +213,11 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC=None):
                 REFRACTORY_COUNT2=refractory_interval
                 SPK_GC.MEM_POT_NOSTP=0   '''
     #print('Total spikes arrived:', np.sum(spike_pttn_per_bin), 'Total spike output:', Num_OUTPUT_SPIKE)    
-    return SPK_GC, EXT_Conductance, INH_Conductance, mem_voltage, p_ofEXT, p_ofINH, Num_OUTPUT_SPIKE, Spike_record
+    #return SPK_GC, EXT_Conductance, INH_Conductance, mem_voltage, p_ofEXT, p_ofINH, Num_OUTPUT_SPIKE, Spike_record
+    return SPK_GC, EXT_Conductance, INH_Conductance, mem_voltage, p_ofEXT, Num_OUTPUT_SPIKE, Spike_record
 
 def plot_cell_dynamics(NUM_MFs, time_step, EXT_Conductance, INH_Conductance, mem_voltage):
+#def plot_cell_dynamics(NUM_MFs, time_step, EXT_Conductance, mem_voltage):
 
     #raster_plot(spike_pttn_per_bin, [0])
 
@@ -228,9 +232,8 @@ def plot_cell_dynamics(NUM_MFs, time_step, EXT_Conductance, INH_Conductance, mem
     for ind_mf in range(NUM_MFs):
         axs[ind_mf].plot(np.arange(time_step), EXT_Conductance[ind_mf]*Plotting_Scale, 'red', label="EXT")
         axs[ind_mf].plot(np.arange(time_step), INH_Conductance[ind_mf]*Plotting_Scale, 'g', label="INH")
-        axs[ind_mf].axhline(y=630*1e-12*PARAM_SCALING*Plotting_Scale, color='c', linestyle=':', label='Peak amplitude') #of both condunctances
-        #axs[ind_mf].plot(np.arange(time_step), EXT_NO_STP[ind_mf]*Plotting_Scale, label="EXT_NO")
-        #axs[ind_mf].plot(np.arange(time_step), NMDA_NO_STP[ind_mf]*Plotting_Scale, label="NMDA_NO")
+        axs[ind_mf].axhline(y=630*1e-12*PARAM_SCALING*Plotting_Scale, color='c', linestyle=':', label='Peak amplitude') #of both condunctances        
+        
         if ind_mf==3: axs[ind_mf].legend()
 
     axs[0].set_title('Conductances')
@@ -247,15 +250,15 @@ def plot_cell_dynamics(NUM_MFs, time_step, EXT_Conductance, INH_Conductance, mem
     axs[NUM_MFs+1].legend()
     plt.show()
 
-def plot_STP(NUM_MFs, time_step, p_ofEXT, p_ofINH):
+def plot_STP(NUM_MFs, time_step, p_ofEXT, p_ofINH=None):
     # For P development on condunctance terms of STP
     print(np.shape(np.arange(time_step)), np.shape(p_ofEXT))
     fig, axs = plt.subplots(NUM_MFs, gridspec_kw={'height_ratios': [1]*(NUM_MFs)})
     for ind_mf in range(NUM_MFs):
         axs[ind_mf].plot(np.arange(time_step), p_ofEXT[ind_mf], color='r', label="EXT")
-        axs[ind_mf].plot(np.arange(time_step), p_ofINH[ind_mf],color='g', label="INH")
+        #axs[ind_mf].plot(np.arange(time_step), p_ofINH[ind_mf],color='g', label="INH")
         axs[ind_mf].axhline(y=r_EXT, color='r', linestyle=':', label='Init_EXT') 
-        axs[ind_mf].axhline(y=r_INH,color='g', linestyle=':', label='Init_INH')    
+        #axs[ind_mf].axhline(y=r_INH,color='g', linestyle=':', label='Init_INH')
         if ind_mf==3: axs[ind_mf].legend()
 
 

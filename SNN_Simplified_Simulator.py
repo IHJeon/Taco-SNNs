@@ -67,8 +67,11 @@ for f_ind, ff in enumerate(feed_forward_indexing):
     for f in ff:
         Spike_trains.append(MF_spike_trains[f])            
     spike_pttn_per_bin=np.array(Spike_trains).reshape(K, TIME_STEP)    
-    _, e, i, m, _, _, Num_OUTPUT_SPIKE, Spike_record = simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind])
+    #_, e, i, m, _, _, Num_OUTPUT_SPIKE, Spike_record = simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind])
+    _, e, i, m, _, Num_OUTPUT_SPIKE, Spike_record = simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind])
+    #_, e, m, _, Num_OUTPUT_SPIKE, Spike_record = simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind])
     if f_ind==0: plot_cell_dynamics(K, TIME_STEP, e, i, m )
+    #if f_ind==0: plot_cell_dynamics(K, TIME_STEP, e, m )
     #if Num_OUTPUT_SPIKE>0: print('Num outspike', Num_OUTPUT_SPIKE)
     GC_output_records.append(Spike_record)
 
