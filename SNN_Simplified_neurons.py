@@ -41,7 +41,8 @@ def data_generation(input_size, input_range):
     for inpt in range(input_size):        
         y=rand_ind()*np.sin(rand_normal()*x)+rand_ind()*np.cos(rand_normal()*x)
         #y=MinMaxScaler(feature_range=(0,max_level_stimuli)).fit_transform(y.reshape(-1, 1)).reshape(-1)                           
-        y=abs(y)
+        #y=abs(y)
+        y=np.clip(y, 0, max_level_stimuli)
         data.append(y)
         #plt.plot(x,y)
         #plt.xlabel('Time steps')
@@ -75,6 +76,44 @@ class SNN_connectivity: # Spiking Neural networks
                 GC_INPUT_INDICES.append(MF_INDEX)
             FEEDFORWARD_INDICES.append(GC_INPUT_INDICES)
         return FEEDFORWARD_INDICES
+
+    def show_edge_matrix(self, GRAPH=False):
+        nd_GC, nd_MF = len(self.node_GC), len(self.node_MF)
+        pallet = np.zeros((nd_GC, nd_MF))
+        #print('pallet shape', np.shape(pallet))
+        #print('pallet init val\n', pallet)
+
+        for ed in self.ed_list:
+            coord_y, coord_x = int(ed[0][1:]), int(ed[1][1:])
+            pallet[coord_x, coord_y]+=1
+
+        if GRAPH:
+            pallet2 = np.zeros((nd_MF, nd_GC))
+            for ed in self.ed_list:            
+                coord_x, coord_y = int(ed[0][1:]), int(ed[1][1:])
+                pallet2[coord_x, coord_y]+=1
+    
+            inter_GC_synapses=np.zeros((nd_GC,nd_GC))
+            inter_MF_synapses=np.zeros((nd_MF,nd_MF))
+    
+            print('pallet1 shape', np.shape(pallet))
+            print('pallet2 shape', np.shape(pallet2))
+    
+            pallet2 = np.concatenate((inter_GC_synapses, pallet2), axis=0)
+            pallet = np.concatenate((pallet, inter_MF_synapses), axis=0)
+            pallet = np.concatenate((pallet2, pallet), axis=1)
+
+        fig, ax = plt.subplots()
+
+        if GRAPH: plt.title('Graph Weight Connectivity matrix')
+        else: 
+            plt.title('Weight Connectivity matrix')
+            plt.xlabel('MFs')
+            plt.ylabel('GCs')
+        ax.matshow(pallet, cmap=plt.cm.Blues)
+        plt.show()
+
+
 
 
 def poisson_spike_generator(lamda, time_bin=100, time_unit=0.001):        # poisson spike per time bin    

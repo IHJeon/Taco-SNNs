@@ -2,9 +2,9 @@ from SNN_Simplified_neurons import *
 from Simplified_spiking_cells import Spiking_cells, simulator, plot_cell_dynamics
 from seaborn import heatmap
 
-NUM_MFs=100
+NUM_MFs=30
 NUM_GCs=NUM_MFs*3
-K=10
+K=4
 TIME_STEP=int(1e3) #10 sec, 10,000 ms
 
 data = data_generation(input_size=NUM_MFs, input_range=TIME_STEP).T
@@ -42,7 +42,8 @@ for ind_mf in range(NUM_MFs):
     axs[ind_mf].axhline(y=100, color='c', linestyle=':', label='Min')
     axs[ind_mf].axhline(y=0, color='c', linestyle=':', label='Max')
 axs[0].set_title('Stimuli input')
-plt.show()'''
+plt.show()
+'''
 
 
 x,y = np.argwhere(MF_spike_trains == 1).T
@@ -53,30 +54,38 @@ print('---------------------------------------------')
 
 GCs=[]
 for i in range(NUM_GCs):
-    SPK_GC=Spiking_cells(num_dend=K)
-    GCs.append(SPK_GC)
+    #SPK_GC=Spiking_cells(num_dend=K)
+    GCs.append(Spiking_cells(num_dend=K))
+
+#print('GC spec', len(GCs[0].p_EXT_U), len(GCs[0].p_EXT_R), len(GCs[0].STDP_weight)\
+#            ,GCs[0].num_dend, GCs[0].membrane_potential, GCs[0].MEM_POT_NOSTP)
+
 
 my_SNN=SNN_connectivity(data_shape=NUM_MFs, num_node_per_layer=NUM_GCs, K=K)
 feed_forward_indexing = my_SNN.feed_forward_indexing(MF_spike_trains.T)
+my_SNN.show_edge_matrix()
+
+print(np.shape(feed_forward_indexing))
+#print('feed_forward_indexing', feed_forward_indexing)
 
 
 GC_output_records=[]
 
 RECORD_WEIGHT_CHANGE=True
 for f_ind, ff in enumerate(feed_forward_indexing):
-    Spike_trains=[]
+    Connected_Spike_trains=[]
     for f in ff:
-        Spike_trains.append(MF_spike_trains[f])            
-    spike_pttn_per_bin=np.array(Spike_trains).reshape(K, TIME_STEP)    
-    #_, e, i, m, _, _, Num_OUTPUT_SPIKE, Spike_record = simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind])
-    _, e, i, m, _, Num_OUTPUT_SPIKE, Spike_record = \
-        simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind], RECORD_WEIGHT_CHANGE)
-    #_, e, m, _, Num_OUTPUT_SPIKE, Spike_record = simulator(NUM_MFs, spike_pttn_per_bin, TIME_STEP, GCs[f_ind])
+        Connected_Spike_trains.append(MF_spike_trains[f])            
+    Connected_Spike_trains=np.array(Connected_Spike_trains).reshape(K, TIME_STEP)
+
+    #_, e, i, m, _, _,  Spike_record = simulator(NUM_MFs, Connected_Spike_trains, TIME_STEP, GCs[f_ind])
+    _, e, i, m, _,  Spike_record = \
+        simulator(NUM_MFs, Connected_Spike_trains, TIME_STEP, GCs[f_ind], RECORD_WEIGHT_CHANGE)
+    #_, e, m, _,  Spike_record = simulator(NUM_MFs, Connected_Spike_trains, TIME_STEP, GCs[f_ind])
     if f_ind==0: 
         plot_cell_dynamics(K, TIME_STEP, e, i, m )
         RECORD_WEIGHT_CHANGE=False
-    #if f_ind==0: plot_cell_dynamics(K, TIME_STEP, e, m )
-    #if Num_OUTPUT_SPIKE>0: print('Num outspike', Num_OUTPUT_SPIKE)
+    #if np.sum(Spike_record)>0: print('Num outspike', np.sum(Spike_record))
     GC_output_records.append(Spike_record)
     
 
@@ -94,12 +103,15 @@ print('---------------------------------------------')
 
 
 
-WEIGHT_MATRIX=np.ones((NUM_GCs, K))
+WEIGHT_MATRIX=np.zeros((NUM_GCs, K))
 for ind, gc in enumerate(GCs):
-    WEIGHT_MATRIX[ind]=gc.Synaptic_strenth
+    #print('ind:', ind, 'val:', np.around(gc.STDP_weight,2))
+    WEIGHT_MATRIX[ind]=gc.STDP_weight
 
+avg=np.mean(WEIGHT_MATRIX, axis=0)
+print('AVG each columne:', np.shape(avg), np.around(avg, 3))
 ax = heatmap(WEIGHT_MATRIX,  cmap="YlGnBu")
-plt.title('Weight Matrix, Heatmap')
+plt.title('STDP Weight Matrix, Heatmap')
 plt.xlabel('K, num dend.')
 plt.ylabel('Num GCs')
 plt.show()
