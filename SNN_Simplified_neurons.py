@@ -1,9 +1,14 @@
+#from Spiking_Single_cells_multiple_dend import TIME_RANGE
+#from RateCode_simulator import NUM_MFs
 from Simplified_spiking_cells import *
 #from RateCodingModel import *
 from matplotlib import pyplot as plt
 
+def softmax(valueset): 
+    #return np.exp(valueset)/np.exp(valueset).sum()
+    return valueset/valueset.sum() # no Exponential
 
-def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4):    
+def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4, degree_of_modularity=0):    
     expansion_rate=Num_GCs/Num_MFs
     node_GC=[]
     node_MF=[]
@@ -15,13 +20,21 @@ def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4
     
     ed_list=[]
     for i in range(Num_GCs):
-        synapse_partner=np.random.choice(Num_MFs, size=degree_connectivity, replace=False)
+        if degree_of_modularity>0: #Syn. partner selection for modularity, preferential to close indices            
+            prob_basis_val=np.exp(-1*(abs((i/expansion_rate-np.arange(Num_MFs))*degree_of_modularity/100)))            
+            modular_prob_assign = softmax(prob_basis_val)            
+            synapse_partner=np.random.choice(Num_MFs, size=degree_connectivity, replace=False, p=modular_prob_assign)
+            #print('Prob', np.around(modular_prob_assign,2),'Choice', synapse_partner)
+            #sys.exit()
+        else: synapse_partner=np.random.choice(Num_MFs, size=degree_connectivity, replace=False)
 
         syns=sorted(synapse_partner)
+        #syns=synapse_partner
         for j in syns:            
             ed_list.append(['M%s'%(j+previous_MF_index), 'G%s'%(i+previous_GC_index)])
 
     print('Network stats: # GCs', len(node_GC), '# MFs', len(node_MF),'# edges(synapses)', len(ed_list))
+    #sys.exit()
     
     return node_GC, node_MF, ed_list
 def rand_ind(Low=0, max_val=100):
@@ -29,7 +42,7 @@ def rand_ind(Low=0, max_val=100):
 def rand_normal():        
     return np.random.normal(scale=0.05)        
 
-def data_generation(input_size, input_range):
+def data_generation(input_size, input_range, mode='random'):
     data = []    
     max_level_stimuli=100
     
@@ -39,7 +52,16 @@ def data_generation(input_size, input_range):
     #seed_val=np.random.randint(0,100)
     
     for inpt in range(input_size):        
-        y=rand_ind()*np.sin(rand_normal()*x)+rand_ind()*np.cos(rand_normal()*x)
+        if mode=='random': 
+            y=rand_ind()*np.sin(rand_normal()*x)+rand_ind()*np.cos(rand_normal()*x)
+        elif mode=='1': y=np.sin(0.5*x)*max_level_stimuli/2+50
+        elif mode=='2': y=np.cos(0.05*x)*max_level_stimuli
+        #elif mode=='3': y=np.flip(x)/input_range*max_level_stimuli*2/3
+        elif mode=='3': y=x/input_range*max_level_stimuli*2/3
+        elif mode=='4': y=[max_level_stimuli]*int(len(x)/2)+[0]*(len(x)-int(len(x)/2))
+        elif mode=='5': y=[0]*(len(x)-int(len(x)/2))+[max_level_stimuli]*int(len(x)/2)
+        elif mode=='6': y=len(x)*[max_level_stimuli*0.1]
+        y=MinMaxScaler(feature_range=(0,100)).fit_transform(y.reshape(-1, 1)).reshape(-1)
         #y=MinMaxScaler(feature_range=(0,max_level_stimuli)).fit_transform(y.reshape(-1, 1)).reshape(-1)                           
         #y=abs(y)
         y=np.clip(y, 0, max_level_stimuli)
@@ -58,11 +80,11 @@ def data_generation(input_size, input_range):
 
 
 class SNN_connectivity: # Spiking Neural networks
-    def __init__(self, data_shape, num_node_per_layer, net_drawing=False, K=4):
+    def __init__(self, data_shape, num_node_per_layer, net_drawing=False, K=4, modularity=0):
         self.input_shape=data_shape
         self.num_node_per_layer=num_node_per_layer
         self.node_GC, self.node_MF, self.ed_list = random_networks(self.num_node_per_layer,\
-                    self.input_shape, degree_connectivity=K)
+                    self.input_shape, degree_connectivity=K, degree_of_modularity=modularity)
 
 
     def feed_forward_indexing(self, data):
@@ -73,7 +95,7 @@ class SNN_connectivity: # Spiking Neural networks
             for edge_ind, edge in [(eg_ind, eg) for eg_ind, eg in enumerate(self.ed_list) if eg[1]==gc]:
                 target_MF=edge[0]
                 MF_INDEX=self.node_MF.index(target_MF)
-                GC_INPUT_INDICES.append(MF_INDEX)
+                GC_INPUT_INDICES.append(MF_INDEX)            
             FEEDFORWARD_INDICES.append(GC_INPUT_INDICES)
         return FEEDFORWARD_INDICES
 
@@ -111,6 +133,7 @@ class SNN_connectivity: # Spiking Neural networks
             plt.xlabel('MFs')
             plt.ylabel('GCs')
         ax.matshow(pallet, cmap=plt.cm.Blues)
+        ax.invert_yaxis()
         plt.show()
 
 
@@ -127,6 +150,7 @@ def poisson_spike_generator(lamda, time_bin=100, time_unit=0.001):        # pois
     return spikes_record
 
 
+
 class Rate_coded_Firing_cells: # a cell
     def __init__(self, index, activity_time_bin=100, time_unit=0.001, \
                         spontaneous_freq=1): #time_range: second 
@@ -139,6 +163,24 @@ class Rate_coded_Firing_cells: # a cell
         self.time_unit=time_unit
 
     def stimulation(self, stimuli):
+        spike_patterns=[]
+        
+        for stml in stimuli:            
+            normalized_unit= (self.max_firing_rate-self.spontaneous_firing_rate)/100
+            varying_intensities=int(normalized_unit*stml) if stml>1 else normalized_unit
+            firing_intensity=varying_intensities+self.spontaneous_firing_rate
+            if firing_intensity<1:
+                raise Exception('firing_intensity<1', '\nfiring_intensity', firing_intensity\
+                ,'=normalized unit:', normalized_unit, '* stml:', stml)
+            self.current_firing_rate = np.clip(firing_intensity, self.spontaneous_firing_rate, self.max_firing_rate)
+
+
+            spike_pttn_per_bin=poisson_spike_generator(self.current_firing_rate, self.activity_time_bin, self.time_unit)
+            spike_patterns+=spike_pttn_per_bin
+
+        return spike_patterns
+
+    def cortical_map_stimulation(self, stimuli):
         spike_patterns=[]
         
         for stml in stimuli:            

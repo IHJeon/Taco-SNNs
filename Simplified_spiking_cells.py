@@ -52,7 +52,9 @@ class Spiking_cells:
         #bounding=1
         sign= 1 if time_interval>0 else -1 if time_interval<0 else 0
         if sign==0: raise Exception("Interval for STDP window is 0")
-        return learning_rate*sign*np.exp(-sign*time_interval/40)*bounding
+        window_output=sign*np.exp(-sign*time_interval/40)
+        #if window_output>0: window_output*=0.7
+        return learning_rate*bounding*window_output
         
     
     def p_EXT(self, ind_dend): return self.p_EXT_U[ind_dend]*self.p_EXT_R[ind_dend]
@@ -82,8 +84,9 @@ class Spiking_cells:
             wave+=EXT_amp[ind]*(np.exp(-t/EXT_dlt[ind])-np.exp(-t/EXT_rho))
         return self.STDP_weight[ind_dend]*self.p_EXT(ind_dend)*wave, r_EXT*wave
 
-    def rate_of_change_membrane_voltage(self, Current_Mem_Pot, current_conductance_EXT,
+    def rate_of_change_membrane_voltage(self, current_conductance_EXT,
                                                                STP=True):
+        Current_Mem_Pot=self.membrane_potential
         dV=-1/membrane_capacitance*(\
                 leak_conductance*(Current_Mem_Pot-leak_reversal_potential)\
                 +INH_conductance*(Current_Mem_Pot-INH_reversal_potential)\
@@ -91,9 +94,9 @@ class Spiking_cells:
                 +current_conductance_EXT *(Current_Mem_Pot-EXT_reversal_potential)\
                 )
         
-        if STP: self.membrane_potential+=dV*TIME_UNIT  # change per milli second
-        else: self.MEM_POT_NOSTP+=dV*TIME_UNIT
-        #return dV*TIME_UNIT
+        #if STP: self.membrane_potential+=dV*TIME_UNIT  # change per milli second
+        #else: self.MEM_POT_NOSTP+=dV*TIME_UNIT
+        return dV*TIME_UNIT
 
 
 
@@ -135,28 +138,35 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC, RECORD_WEIGHT_CHAN
         if not REFRACTORY_COUNT==0:  #Refractory Period        
             SPK_GC.membrane_potential=reset_membrane_potential
             REFRACTORY_COUNT-=1
-        else: # Compute, if not Refractory period            
+        else: # Compute, if not Refractory period
+            dV=0
             for dend in range(SPK_GC.num_dend):            
                 if spike_pttn_per_bin[dend][t]==1: #if there's spike input for each dendrite
                     EXT_waveform_of_a_spike, _ =SPK_GC.EXT_conductance_evaluation(np.arange(time_step-t), dend)
                     EXT_Conductance[dend][t:]+=EXT_waveform_of_a_spike
                     '''STDP, LTD'''
-                    for t_backward in [t-t_ for t_ in range(1, WINDOW_INTERVAL+1) if t-t_>=0]:
+                    for t_backward in [t-t_ for t_ in range(1, WINDOW_INTERVAL+1) if t-t_>=0]:                    
                         if Spike_record[t_backward]: #If there's GC spikes before this MF spike                            
                             LTD_t=SPK_GC.STDP_window_function(t_backward-t, dend)
                             SPK_GC.STDP_weight[dend]+=LTD_t
                             if RECORD_WEIGHT_CHANGE: record_LTD[dend][t]+=LTD_t
                             #print('t:', t, 't_back:', t_backward)
                             #print('delta w in depression:', LTD_t)
-            
-            Sum_Conductance_Input=np.sum(EXT_Conductance, axis=0)
-            SPK_GC.rate_of_change_membrane_voltage(SPK_GC.membrane_potential,
-                                                     Sum_Conductance_Input[t], STP=True)
+                #dV+=SPK_GC.rate_of_change_membrane_voltage(EXT_Conductance[dend][t], STP=True)
+            #SPK_GC.membrane_potential+=dV
+            #Sum_Conductance_Input=np.sum(EXT_Conductance, axis=0)
+            NORMALIZATION=4/SPK_GC.num_dend
+            #NORMALIZATION=1
+            Sum_Conductance_Input=np.sum(EXT_Conductance[:,t])*NORMALIZATION
+            SPK_GC.membrane_potential+=SPK_GC.rate_of_change_membrane_voltage(
+                                                     #Sum_Conductance_Input[t], STP=True)
+                                                     Sum_Conductance_Input, STP=True)
             
             if SPK_GC.membrane_potential>=activation_threshold:
                 #print('SPIKE at time', t)
                 Spike_record[t]+=1
-                for t_backward in [t-t_ for t_ in range(1, WINDOW_INTERVAL+1) if t-t_>=0]:
+                '''STDP, LTP'''                
+                for t_backward in [t-t_ for t_ in range(1, WINDOW_INTERVAL+1) if t-t_>=0]:                
                     for dend in range(SPK_GC.num_dend):                    
                         if spike_pttn_per_bin[dend][t_backward]:                            
                             LTP_t=SPK_GC.STDP_window_function(t-t_backward, dend)
@@ -164,13 +174,13 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC, RECORD_WEIGHT_CHAN
                             SPK_GC.STDP_weight[dend]+=LTP_t
                             if RECORD_WEIGHT_CHANGE: record_LTP[dend][t]+=LTP_t
                             #print('t:', t, 't_back:', t_backward)
-                            #print('delta w in potentiation:', LTP_t)                            
+                            #print('delta w in potentiation:', LTP_t)
                 
                 REFRACTORY_COUNT=refractory_interval
                 SPK_GC.membrane_potential=0          # 0mv Represent spikes (choosed as a arbitrary high value)   
-            elif SPK_GC.membrane_potential<=leak_reversal_potential:
-                print('Limiting minimum potential by leak revers. Pot. at time', t)
-                SPK_GC.membrane_potential=leak_reversal_potential            
+            #elif SPK_GC.membrane_potential<=leak_reversal_potential:
+            #    print('Limiting minimum potential by leak revers. Pot. at time', t)
+            #    SPK_GC.membrane_potential=leak_reversal_potential            
 
         for dend in range(SPK_GC.num_dend):
             SPK_GC.PLASTICITY(dend, spike_pttn_per_bin[dend][t]) #Short term plasticity
