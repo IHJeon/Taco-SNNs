@@ -37,47 +37,6 @@ def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4
     #sys.exit()
     
     return node_GC, node_MF, ed_list
-def rand_ind(Low=0, max_val=100):
-        return np.random.randint(0,max_val)
-def rand_normal():        
-    return np.random.normal(scale=0.05)        
-
-def data_generation(input_size, input_range, mode='random'):
-    data = []    
-    max_level_stimuli=100
-    
-    from sklearn.preprocessing import MinMaxScaler        
-    
-    x= np.linspace(0,input_range,input_range)    
-    #seed_val=np.random.randint(0,100)
-    
-    for inpt in range(input_size):        
-        if mode=='random': 
-            y=rand_ind()*np.sin(rand_normal()*x)+rand_ind()*np.cos(rand_normal()*x)
-        elif mode=='1': y=np.sin(0.5*x)*max_level_stimuli/2+50
-        elif mode=='2': y=np.cos(0.05*x)*max_level_stimuli
-        #elif mode=='3': y=np.flip(x)/input_range*max_level_stimuli*2/3
-        elif mode=='3': y=x/input_range*max_level_stimuli*2/3
-        elif mode=='4': y=[max_level_stimuli]*int(len(x)/2)+[0]*(len(x)-int(len(x)/2))
-        elif mode=='5': y=[0]*(len(x)-int(len(x)/2))+[max_level_stimuli]*int(len(x)/2)
-        elif mode=='6': y=len(x)*[max_level_stimuli*0.1]
-        y=MinMaxScaler(feature_range=(0,100)).fit_transform(y.reshape(-1, 1)).reshape(-1)
-        #y=MinMaxScaler(feature_range=(0,max_level_stimuli)).fit_transform(y.reshape(-1, 1)).reshape(-1)                           
-        #y=abs(y)
-        y=np.clip(y, 0, max_level_stimuli)
-        data.append(y)
-        #plt.plot(x,y)
-        #plt.xlabel('Time steps')
-        #plt.ylabel('Signal intensity')
-        #plt.show()
-    #print('len y:',len(y), 'Sum y:', np.sum(y), 'AVG y', np.sum(y)/len(y))
-    #print('Signal Data shape:',np.shape(data), 'Sum data:', np.sum(data), 'AVG Data', np.sum(data)/(input_size*num_input) )
-    #print('y',y)
-    data=np.array(data).T
-    return data
-
-
-
 
 class SNN_connectivity: # Spiking Neural networks
     def __init__(self, data_shape, num_node_per_layer, net_drawing=False, K=4, modularity=0):

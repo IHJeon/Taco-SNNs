@@ -1,15 +1,14 @@
-#from Spiking_Single_cells_multiple_dend import TIME_RANGE
-from scipy.sparse import data
 from SNN_Simplified_neurons import *
 from Simplified_spiking_cells import Spiking_cells, simulator, plot_cell_dynamics
 from seaborn import heatmap
 from Signal_processing import *
-NUM_MFs=100
+NUM_MFs=20
 NUM_GCs=NUM_MFs*3
 K=4
-TIME_STEP=int(1e3) #10 sec, 10,000 ms
-DEGREE_MODULARITY=100
+TIME_STEP=int(1e3) #10 sec = 10,000 ms
+DEGREE_MODULARITY=0
 NUM_DOMAIN=2
+DEGREE_IMPACT=88
 #data = data_generation(input_size=NUM_MFs, input_range=TIME_STEP, mode='2').T
 #data1 = data_generation(input_size=int(NUM_MFs/3), input_range=TIME_STEP,       mode='1').T
 #data2 = data_generation(input_size=int(NUM_MFs/3), input_range=TIME_STEP,       mode='2').T
@@ -17,11 +16,13 @@ NUM_DOMAIN=2
 #data=np.vstack((data1,data2, data3))
 #print('Data lenth-  1:', len(data1),'2:', len(data2), '3:', len(data3))
 data=[]
-data.append(data_generation(input_size=1, input_range=TIME_STEP, mode='3').T)
+data.append(data_generation(input_size=1, input_range=TIME_STEP, mode='1').T)
 data.append(data_generation(input_size=1, input_range=TIME_STEP, mode='2').T)
 #data.append(data_generation(input_size=1, input_range=TIME_STEP, mode='3').T)
-data=(np.array(data)*NUM_MFs/2/100).astype(int).reshape((NUM_DOMAIN,-1))
-#print('data shape:', np.shape(data), 'lenth', len(data))
+#data=(np.array(data)*NUM_MFs/2/100).astype(int).reshape((NUM_DOMAIN,-1))
+data=(np.array(data)*NUM_MFs/100).astype(int).reshape((NUM_DOMAIN,-1))
+#data=(np.array(data)*NUM_MFs/100).reshape((NUM_DOMAIN,-1))
+print('data shape:', np.shape(data), 'lenth', len(data))
 #print(data[0])
 
 #sys.exit()
@@ -39,10 +40,17 @@ for ind_mf in range(len(data)):
 axs[0].set_title('Stimuli input')
 plt.show()
 
-IMPACT_MATRIX, COORDINATE=stimuli_IMPACTmatrix_converter(data[0], NUM_MFs, TIME_STEP)
-#FREQUENCY = FREQUENCY_COUNTER(IMPACT_MATRIX)
-FREQUENCY = MOVING_FREQUENCY_MATRIX(IMPACT_MATRIX)
+HALFNUM=int(NUM_MFs/2)
 
+IMPACT_MATRIX, COORDINATE=stimuli_IMPACTmatrix_converter(data[0], HALFNUM, TIME_STEP)
+IMPACT_MATRIX*=DEGREE_IMPACT
+
+FREQUENCY=FREQ_MAP(data[0], TIME_STEP, HALFNUM)
+#FREQUENCY = FREQUENCY_COUNTER(IMPACT_MATRIX)
+#FREQUENCY = MOVING_FREQUENCY_MATRIX(IMPACT_MATRIX)
+
+print("MF INPUT size", 'IMPACT Mat:', np.shape(IMPACT_MATRIX), 'Freq Mat:', np.shape(FREQUENCY))
+#sys.exit()
 firing_MFs=[]
 for ind, mf in enumerate(range(NUM_MFs)):
     firing_MFs.append(Rate_coded_Firing_cells(index=ind, activity_time_bin=1, time_unit=0.001, \
@@ -63,17 +71,21 @@ for ind, mf in enumerate(firing_MFs):
 MF_spike_trains=[]
 
 HALFNUM=int(NUM_MFs/2)
-print(HALFNUM)
-for ind in range(HALFNUM):
+
+print("HalfNUM:", HALFNUM, 'Len MF:', len(firing_MFs))
+print('np.shape(IMPACT_MATRIX)', np.shape(IMPACT_MATRIX), \
+    "len", len(IMPACT_MATRIX))
+for ind in range(HALFNUM):    
     single_spike_train = firing_MFs[ind].stimulation(IMPACT_MATRIX[ind])
     #single_spike_train = mf.wide_stimulation(data) # by taking into account of collateral effect
     MF_spike_trains.append(single_spike_train)
+
 for ind in range(HALFNUM):
     single_spike_train = firing_MFs[ind+HALFNUM].stimulation(FREQUENCY[ind])
     #single_spike_train = mf.wide_stimulation(data) # by taking into account of collateral effect
     MF_spike_trains.append(single_spike_train)
 
-MF_spike_trains=np.flip(MF_spike_trains, 0)
+MF_spike_trains=np.array(MF_spike_trains)
 
 '''Phase 1'''
 
@@ -84,7 +96,7 @@ print('MF Output shape:', np.shape(MF_spike_trains))
 #print('GC Output shape:', np.shape(data))
 
 
-
+#sys.exit()
 
 '''
 fig, axs = plt.subplots(NUM_MFs)#, gridspec_kw={'height_ratios': [1]*(NUM_MFs)})
@@ -102,7 +114,9 @@ plt.scatter(y, x, marker='|', label='SPIKE arrivals')
 plt.title('MF firing records')
 plt.show()
 print('---------------------------------------------')
-#sys.exit()
+
+
+MF_spike_trains=np.flip(MF_spike_trains, 0)
 GCs=[]
 for i in range(NUM_GCs):
     #SPK_GC=Spiking_cells(num_dend=K)
