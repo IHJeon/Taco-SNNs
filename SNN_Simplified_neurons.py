@@ -8,6 +8,21 @@ def softmax(valueset):
     #return np.exp(valueset)/np.exp(valueset).sum()
     return valueset/valueset.sum() # no Exponential
 
+def Pruning(WEIGHT_MATRIX, NUM_PRUN=1):    
+    Row=np.shape(WEIGHT_MATRIX)[0]
+    Col=np.shape(WEIGHT_MATRIX)[1]-NUM_PRUN
+    Pruned_MAT=np.zeros((Row, Col))
+    for r in Row:
+        mat=WEIGHT_MATRIX[r]
+        ind_prun=np.where(mat==np.amin(mat))
+        pruned=np.delete(mat, mat[ind_prun[0]])
+        Pruned_MAT[r]=pruned
+    
+    return Pruned_MAT
+
+
+
+
 def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4, degree_of_modularity=0):    
     expansion_rate=Num_GCs/Num_MFs
     node_GC=[]
@@ -62,7 +77,7 @@ class SNN_connectivity: # Spiking Neural networks
         nd_GC, nd_MF = len(self.node_GC), len(self.node_MF)
         pallet = np.zeros((nd_GC, nd_MF))
         #print('pallet shape', np.shape(pallet))
-        #print('pallet init val\n', pallet)
+        #print('pallet init val\n', pallet)        
 
         for ed in self.ed_list:
             coord_y, coord_x = int(ed[0][1:]), int(ed[1][1:])
@@ -94,6 +109,7 @@ class SNN_connectivity: # Spiking Neural networks
         ax.matshow(pallet, cmap=plt.cm.Blues)
         ax.invert_yaxis()
         plt.show()
+        print("Total Num Weight", np.sum(pallet))
 
 
 

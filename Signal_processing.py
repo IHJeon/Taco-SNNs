@@ -12,11 +12,11 @@ def rand_normal():
 
 def data_generation(input_size, input_range, mode='random'):
     data = []    
-    max_level_stimuli=100
+    max_level_stimuli=1
     
     from sklearn.preprocessing import MinMaxScaler        
     
-    x= np.linspace(0,input_range,input_range)    
+    x= np.linspace(0,input_range,input_range)
     #seed_val=np.random.randint(0,100)
     
     for inpt in range(input_size):        
@@ -25,46 +25,57 @@ def data_generation(input_size, input_range, mode='random'):
         elif mode=='1': 
             dt=0.001
             TIME_STEP=input_range
-            t=np.arange(0, TIME_STEP*dt, dt)
+            t=np.arange(0, TIME_STEP*dt, dt)            
             y=np.sin(2*np.pi*50*t) + 0.5*np.sin(2*np.pi*100*t)
             #y=np.sin(x*4*np.pi/input_range)*max_level_stimuli/2+50
-            dt=0.001
-            f0=50
-            f1=250
+            f0=5
+            f1=5000
             t1=1
             t=np.arange(0,t1,dt)
             y= np.cos(2*np.pi*t*
                     (f0+(f1-f0)*np.power(t,2))/(3*t1**2)
                     )
-        elif mode=='2': y=np.cos(0.05*x)*max_level_stimuli
+            
+            y*=max_level_stimuli*0.5*0.5
+            y+=max_level_stimuli*0.5*0.5
+            print('len t', len(t), 'len y', len(y), 'max y:', max(y))
+        elif mode=='2': y=np.cos(0.05*x)*max_level_stimuli + max_level_stimuli/2
         #elif mode=='3': y=np.flip(x)/input_range*max_level_stimuli*2/3
         elif mode=='3': y=x/input_range*max_level_stimuli*2/3
         elif mode=='4': y=[max_level_stimuli]*int(len(x)/2)+[0]*(len(x)-int(len(x)/2))
         elif mode=='5': y=[0]*(len(x)-int(len(x)/2))+[max_level_stimuli]*int(len(x)/2)
-        elif mode=='6': y=len(x)*[max_level_stimuli*0.1]
-        y=MinMaxScaler(feature_range=(0,100)).fit_transform(y.reshape(-1, 1)).reshape(-1)
-        #y=MinMaxScaler(feature_range=(0,max_level_stimuli)).fit_transform(y.reshape(-1, 1)).reshape(-1)                           
+        elif mode=='6': y=np.ones(len(x))*max_level_stimuli
+        #y=MinMaxScaler(feature_range=(0,100)).fit_transform(y.reshape(-1, 1)).reshape(-1)
+        #y=MinMaxScaler(feature_range=(0,max_level_stimuli)).fit_transform(y.reshape(-1, 1)).reshape(-1)
         #y=abs(y)
+        #print('y max:', max(y), 'y min:', int(min(y)))
         y=np.clip(y, 0, max_level_stimuli)
         data.append(y)
         #plt.plot(x,y)
         #plt.xlabel('Time steps')
         #plt.ylabel('Signal intensity')
         #plt.show()
+        
     #print('len y:',len(y), 'Sum y:', np.sum(y), 'AVG y', np.sum(y)/len(y))
     #print('Signal Data shape:',np.shape(data), 'Sum data:', np.sum(data), 'AVG Data', np.sum(data)/(input_size*num_input) )
     #print('y',y)
     data=np.array(data).T
     return data
 
-def stimuli_IMPACTmatrix_converter(data, NUM_MFs, TIME_STEP, PRNT=True):
-    #HALF_NUM=int(NUM_MFs/2)
-    HALF_NUM=int(NUM_MFs)
-    IMPACT_MATRIX=np.zeros((HALF_NUM, TIME_STEP))
+def stimuli_IMPACTmatrix_converter(data, NUM_MFs, OUTPUT_NUM, TIME_STEP, PRNT=True):
+    #NUM_MFs=HALFNUM
+    IMPACT_MATRIX=np.zeros((OUTPUT_NUM, TIME_STEP))
+    coverage_ratio=int(NUM_MFs/OUTPUT_NUM)
+    #data_amp_normalized=(data/coverage_ratio).astype(int)
     
-    for ind_mf in range(HALF_NUM):
+
+    print('data shape', np.shape(data))
+    print('coverage_ratio',coverage_ratio)
+    #print('data_amp_normalized', np.shape(data_amp_normalized))
+    for ind_mf in range(OUTPUT_NUM):
         IMPACT_MATRIX[ind_mf]=np.where(data==ind_mf,1,0)
     
+    #sys.exit()
     
     coordinate= np.argwhere(IMPACT_MATRIX).T
 
@@ -77,6 +88,8 @@ def stimuli_IMPACTmatrix_converter(data, NUM_MFs, TIME_STEP, PRNT=True):
         #print('j', j)
         plt.scatter(j, i, marker='|', label='STIMULI dist')    
         plt.title('PRIMARY POINTs IMPACT MATRIX')
+        plt.axhline(y=OUTPUT_NUM, color='c', linestyle=':', label='Max')
+        plt.axhline(y=0, color='c', linestyle=':', label='Min')
         plt.show()
     return IMPACT_MATRIX, coordinate
 
@@ -174,6 +187,8 @@ def spectrogram_EX():
     x= np.cos(2*np.pi*t*
             (f0+(f1-f0)*np.power(t,2))/(3*t1**2)
             )
+    
+    x=t*100
     #dt=0.001
     #TIME_STEP=int(1e3)
     #t=np.arange(0, TIME_STEP*dt, dt)
@@ -191,9 +206,10 @@ def spectrogram_EX():
 
     plt.show()
 
-    import sounddevice as sd
-    sd.play(1*x, 1/dt)
-    sd.wait()
+    #import sounddevice as sd
+    #sd.play(1*x, 1/dt)
+    #sd.wait()
+
 
 def Power_spectrum_EX():
     dt=0.001
@@ -235,11 +251,11 @@ def Power_spectrum_EX():
 
 
 
-def Power_spectrum_at_t(f, TIME_UNIT=1e-3, PRINT=False):
+def Power_spectrum_at_t(f, TIME_UNIT=1e-03, PRINT=False):
     
     if not len(f)==0:        
         dt=TIME_UNIT
-        t=np.arange(0, len(f)*TIME_UNIT, dt)        
+        t=np.arange(0, len(f)*dt, dt)        
     else:
         dt=TIME_UNIT
         t=np.arange(0, 1, dt)
@@ -257,57 +273,66 @@ def Power_spectrum_at_t(f, TIME_UNIT=1e-3, PRINT=False):
     #print(np.where(PSD[L]>1))
     #print(len(PSD[L]))
     #print(freq[np.where(PSD[L]>1)],  PSD[L][np.where(PSD[L]>1)])
-    Freq_components = freq[np.where(PSD[L]>1)]
-    Freq_amplitude = PSD[L][np.where(PSD[L]>1)]
     
-
     if PRINT:
+        print('f val. sample', f[:5])
+        print('fhat val. sample:', fhat[:5])
+        print('PSD  val. sample:', PSD[:5])
+        #sys.exit()
+
         fig, axs = plt.subplots(2,1)
         plt.sca(axs[0])    
-        plt.plot(t,f, label='Signal')
+        plt.plot(t,f, label='Signals at t')
         plt.xlim(t[0], t[-1])
         plt.legend()
-        plt.title("Signals")
+        plt.title("Signals at t")
 
         plt.sca(axs[1])
         #plt.plot(freq[L], abs(fhat[L]), label='Noisy abs')
-        plt.plot(freq[L],PSD[L], label='PSD')
+        plt.plot(freq[L],PSD[L], label='PSD', marker='o')
+        
         #plt.plot(freq[L],fhat[L],  label='Noisy fhat')
 
         plt.xlim(freq[L[0]],freq[L[-1]])
         plt.legend()
         plt.title("power Spectrum")
 
-        plt.show()    
+        plt.show()
+
+    Freq_components = freq[np.where(PSD[L]>1)]
+    Freq_amplitude = PSD[L][np.where(PSD[L]>1)]        
     return Freq_components,  Freq_amplitude
     
     
 def FREQ_MAP(f, TIME_STEP, NUMCELL, PRINT=True):
-    freq_map=np.zeros((TIME_STEP, NUMCELL))   #Freq range = (0 ~ 1/dt *0.5); max=500
-    print('freq map shape:', np.shape(freq_map))
-    print('freq map shape:', np.shape(freq_map[0]))
+    freq_map=np.zeros((TIME_STEP, NUMCELL))   #Freq range = (0 ~ 1/dt *0.5); max=500    
+    
     #time_bin=int(len(f)/10)
-    coverage_ratio=int(500/NUMCELL) 
-    for i in range(TIME_STEP):    
-        comp, amp = Power_spectrum_at_t(f[i:i+100])
+    Time_sampling_rate=1e-03
+    coverage_ratio=int(1/Time_sampling_rate*0.5/NUMCELL)
+    for i in range(TIME_STEP):
+        comp, amp = Power_spectrum_at_t(f[i:i+100], Time_sampling_rate)
+        if i==TIME_STEP-101:
+            Power_spectrum_at_t(f[i:i+100], Time_sampling_rate, PRINT=True)
         #print('comp, amp shape:', np.shape(comp), np.shape(amp))
         if not len(comp)==0:
-            ind=(comp/coverage_ratio).astype(int) #Freq bin per cell = coverage_ratio
+            #ind=(comp/coverage_ratio).astype(int) #Freq bin per cell = coverage_ratio
             cell_input=np.zeros(NUMCELL)
-            for freq_ind, freq_comp in enumerate(comp):
-                cell_input[int(freq_comp/coverage_ratio)]+=amp[freq_ind]               
+            for freq_ind in [f_ind for f_ind in range(len(comp)) if f_ind!=0]:
+                cell_input[int(comp[freq_ind]/coverage_ratio)]+=amp[freq_ind]
+            
+            freq_map[i]=cell_input            
 
-            freq_map[i]+=cell_input
-
+    freq_map=freq_map.T
     #print(np.where(freq_map>0))
     if PRINT:
-        ax = heatmap(freq_map.T,  cmap="YlGnBu")
+        ax = heatmap(freq_map,  cmap="YlGnBu")
         ax.invert_yaxis()
         plt.title('Freq Matrix, Heatmap')
         plt.xlabel('Time step')
         plt.ylabel('Freq input to Cell index')
         plt.show()
-    return freq_map.T
+    return freq_map
 
 
 
@@ -324,6 +349,8 @@ f=np.sin(2*np.pi*50*t) + 0.5*np.sin(2*np.pi*100*t)
 #            (f0+(f1-f0)*np.power(t,2))/(3*(TIME_STEP*dt)**2)
 #            )
 
+#f=np.ones(len(t))
+#Power_spectrum_at_t(f[:100], PRINT=True)
 
 Num_cell=100
 

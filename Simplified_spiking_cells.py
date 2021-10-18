@@ -39,13 +39,22 @@ WINDOW_INTERVAL=40
 class Spiking_cells:
     def __init__(self,num_dend=1): 
         #each refers to Synaptic weghts of each of the components
-        self.p_EXT_U=[r_EXT]*num_dend
-        self.p_EXT_R=[1]*    num_dend
+        self.p_EXT_U=    [r_EXT]*num_dend
+        self.p_EXT_R=    [1]*    num_dend
         self.STDP_weight=[1]*num_dend # for weight update for STDP, initialized as 1
 
         self.num_dend=num_dend
         self.membrane_potential= reset_membrane_potential
         self.MEM_POT_NOSTP= reset_membrane_potential
+
+    def Synapse_Pruning(self, NUM_PRUN=1):        
+        ind_prun=np.where(self.STDP_weight==np.amin(self.STDP_weight))[0][:NUM_PRUN]
+
+        self.STDP_weight=np.delete(self.STDP_weight, ind_prun)
+        self.p_EXT_U=np.delete(self.p_EXT_U, ind_prun)
+        self.p_EXT_R=np.delete(self.p_EXT_R, ind_prun)
+        self.num_dend-=NUM_PRUN
+        return ind_prun
 
     def STDP_window_function(self, time_interval, ind_dend):
         bounding=np.exp(-abs(1-self.STDP_weight[ind_dend]))
