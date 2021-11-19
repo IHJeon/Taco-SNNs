@@ -1,3 +1,4 @@
+from Signal_processing import Num_cell
 import numpy as np
 import sys
 from matplotlib import pyplot as plt
@@ -48,8 +49,10 @@ class Spiking_cells:
         self.MEM_POT_NOSTP= reset_membrane_potential
 
     def Synapse_Pruning(self, NUM_PRUN=1):        
-        ind_prun=np.where(self.STDP_weight==np.amin(self.STDP_weight))[0][:NUM_PRUN]
-
+        #ind_prun=np.where(self.STDP_weight==np.amin(self.STDP_weight))[0][:NUM_PRUN]
+        
+        ind_prun = np.argpartition(self.STDP_weight, NUM_PRUN)[:NUM_PRUN]
+        
         self.STDP_weight=np.delete(self.STDP_weight, ind_prun)
         self.p_EXT_U=np.delete(self.p_EXT_U, ind_prun)
         self.p_EXT_R=np.delete(self.p_EXT_R, ind_prun)

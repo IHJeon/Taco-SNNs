@@ -7,9 +7,30 @@ import math
 import os
 import sys
 from vpython import *
-from function2 import * #load data
+#import statsmodels.api as sm
+#from statsmodels.distributions.empirical_distribution import ECDF
+
 MF_colors=np.array([[192,192,192], [135,121,78], [109,135,100]])/256
 GC_colors = ['red', 'Black', 'green']    
+
+# Data management
+def data_save(data_name, data):
+    cur_path = os.path.dirname(os.path.realpath(__file__))
+    directory = cur_path+'/data'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    save_dir=directory+'/'+data_name
+    np.save(save_dir, data)
+    print('data', data_name,'saved at',save_dir)
+    
+def data_load(data_name):
+    cur_path = os.path.dirname(os.path.realpath(__file__))
+    directory = cur_path+'/data'
+    #load= np.load(directory+'/'+ data_name+'.npy')
+    load= np.load(directory+'/'+ data_name+'.npy', allow_pickle=True)
+    return load
+
 
 #num_synapses_range
 def input_processing(data_name):
