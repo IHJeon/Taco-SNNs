@@ -24,7 +24,8 @@ def Pruning(WEIGHT_MATRIX, NUM_PRUN=1):
 
 
 
-def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4, degree_of_modularity=0):    
+def random_networks(Num_GCs, Num_MFs, previous_MF_index=0,\
+             degree_connectivity=4, degree_of_modularity=0, Selection_basis=[]):    
     expansion_rate=Num_GCs/Num_MFs
     node_GC=[]
     node_MF=[]
@@ -35,10 +36,17 @@ def random_networks(Num_GCs, Num_MFs, previous_MF_index=0, degree_connectivity=4
         node_MF.append('M%s'%(mf+previous_MF_index))
     
     ed_list=[]
+
+      
+
     for i in range(Num_GCs):
         if degree_of_modularity>0: #Syn. partner selection for modularity, preferential to close indices            
             prob_basis_val=np.exp(-1*(abs((i/expansion_rate-np.arange(Num_MFs))*degree_of_modularity/100)))            
-            modular_prob_assign = softmax(prob_basis_val)            
+            modular_prob_assign = softmax(prob_basis_val)
+            if Selection_basis!=[]: 
+                preference= softmax(Selection_basis)
+                modular_prob_assign=np.multiply(modular_prob_assign, preference)
+                modular_prob_assign=softmax(modular_prob_assign)
             synapse_partner=np.random.choice(Num_MFs, size=degree_connectivity, replace=False, p=modular_prob_assign)
             #print('Prob', np.around(modular_prob_assign,2),'Choice', synapse_partner)
             #sys.exit()
@@ -75,7 +83,7 @@ def migration_timing(cells, colors, Num_Modules=3):
 class SNN_connectivity: # Spiking Neural networks
     def __init__(self, data_shape, num_node_per_layer, net_drawing=False, K=4, \
                     modularity=0, NUM_modules=1, num_rewire=0, rewire_rt=0, \
-                        NETWORK_DRAW=False):
+                        NETWORK_DRAW=False, Spike_counts=[]):
         self.input_shape=data_shape
         self.num_node_per_layer=num_node_per_layer
         self.MF_colors=['m','y', 'c']
@@ -83,12 +91,15 @@ class SNN_connectivity: # Spiking Neural networks
 
         if NUM_modules==1:
             self.node_GC, self.node_MF, self.ed_list = random_networks(self.num_node_per_layer,\
-                        self.input_shape, degree_connectivity=K, degree_of_modularity=modularity)
+                        self.input_shape, degree_connectivity=K, \
+                        degree_of_modularity=modularity, Selection_basis=Spike_counts)
             self.edge_color_map = ['k']*len(self.ed_list)
         elif NUM_modules==2:
-            self.nGC1, self.nMF1, self.edl1 = random_networks(int(num_node_per_layer/2), int(data_shape/2), degree_connectivity=K)            
-            self.nGC2, self.nMF2, self.edl2 = random_networks(num_node_per_layer-len(self.nGC1), data_shape-len(self.nMF1), \
-                                                            previous_MF_index=len(self.nMF1), degree_connectivity=K)
+            self.nGC1, self.nMF1, self.edl1 = random_networks(int(num_node_per_layer/2),\
+                 int(data_shape/2), degree_connectivity=K, Selection_basis=Spike_counts)
+            self.nGC2, self.nMF2, self.edl2 = random_networks(num_node_per_layer-len(self.nGC1),\
+                 data_shape-len(self.nMF1), previous_MF_index=len(self.nMF1),\
+                      degree_connectivity=K, Selection_basis=Spike_counts)
             self.node_GC = self.nGC1 + self.nGC2
             self.node_MF = self.nMF1 + self.nMF2
             self.ed_list = self.edl1 + self.edl2
@@ -395,7 +406,7 @@ def poisson_spike_generator(lamda, time_bin=100, time_unit=0.001):        # pois
 
 class Rate_coded_Firing_cells: # a cell
     def __init__(self, index, activity_time_bin=100, time_unit=0.001, \
-                        spontaneous_freq=1): #time_range: second 
+                        spontaneous_freq=2): #time_range: second 
         self.index=index
         self.spontaneous_firing_rate=spontaneous_freq        
         self.max_firing_rate=100+spontaneous_freq #+1 for poisson intensity to be non-zero

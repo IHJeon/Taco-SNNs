@@ -19,7 +19,7 @@ EXT_amp=np.array([1.*1e-09, 0.3*1e-09])         *PARAM_SCALING*15  #Amp & conduc
 
 membrane_capacitance=3.22*1e-12                 *PARAM_SCALING #C_m
 leak_conductance=1.06*1e-09                     *PARAM_SCALING #G_m
-INH_conductance=0.483*1e-09                     *PARAM_SCALING #G_GABA
+INH_CONDUCTANCE=0.483*1e-09                     *PARAM_SCALING #G_GABA
 
 leak_reversal_potential=-79.9*1e-03             #*PARAM_SCALING #E_m
 INH_reversal_potential =-79.1*1e-03              #*PARAM_SCALING #E_INH (tonic)
@@ -47,7 +47,7 @@ class Spiking_cells:
         self.num_dend=num_dend
         self.membrane_potential= reset_membrane_potential
         self.MEM_POT_NOSTP= reset_membrane_potential
-
+    '''
     def Synapse_Pruning(self, NUM_PRUN=1):        
         #ind_prun=np.where(self.STDP_weight==np.amin(self.STDP_weight))[0][:NUM_PRUN]
         
@@ -57,7 +57,7 @@ class Spiking_cells:
         self.p_EXT_U=np.delete(self.p_EXT_U, ind_prun)
         self.p_EXT_R=np.delete(self.p_EXT_R, ind_prun)
         self.num_dend-=NUM_PRUN
-        return ind_prun
+        return ind_prun'''
 
     def STDP_window_function(self, time_interval, ind_dend):
         bounding=np.exp(-abs(1-self.STDP_weight[ind_dend]))
@@ -101,7 +101,7 @@ class Spiking_cells:
         Current_Mem_Pot=self.membrane_potential
         dV=-1/membrane_capacitance*(\
                 leak_conductance*(Current_Mem_Pot-leak_reversal_potential)\
-                +INH_conductance*(Current_Mem_Pot-INH_reversal_potential)\
+                +INH_CONDUCTANCE*(Current_Mem_Pot-INH_reversal_potential)\
                 #+INH_conductance\
                 +current_conductance_EXT *(Current_Mem_Pot-EXT_reversal_potential)\
                 )
@@ -120,7 +120,7 @@ def simulator(NUM_MFs, spike_pttn_per_bin, time_step, SPK_GC, RECORD_WEIGHT_CHAN
     
     ''' For recording the values of variables as np.zeros'''
     EXT_Conductance=np.zeros((NUM_MFs, time_step))
-    INH_Conductance=np.ones((NUM_MFs, time_step))*INH_conductance
+    INH_Conductance=np.ones((NUM_MFs, time_step))*INH_CONDUCTANCE
     mem_voltage=np.zeros(time_step)
     REFRACTORY_COUNT=0
     record_p_ofEXT=np.zeros((NUM_MFs,time_step))
